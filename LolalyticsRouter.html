@@ -1,0 +1,172 @@
+<!-- The Get Matchup Data button triggers popup blockers, because it opens two tabs -->
+
+<!DOCTYPE html>
+<html>
+<style>
+
+.all {
+	background: #DCE1E3;	
+}
+
+.center {
+  display: block;
+  <!-- margin-left: auto for centering-->
+  margin-right: auto;
+  width: 50%;
+}
+.column {
+	float: left;
+	padding-right: 100px;
+}
+
+.button {
+	background: #004E7C;
+	color: white;
+	border: none;
+	padding: 12px 20px;
+	margin: 4px 2px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	text-shadow:none;
+}
+
+.red-button {
+	background: #B73225;	
+}
+
+input , select {
+  width: 100%;
+  padding: 12px 20px;
+  margin: 8px 0;
+  display: inline-block;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+
+
+@media screen and (max-width: 600px) {
+  .column {
+    width: 100%;
+  }  
+}
+
+</style>
+
+<body onload="initialize()" style=>
+
+<div class="all">
+	
+	<datalist id="champList"></datalist>
+	
+	<div>
+		<img src="https://cdn.op.lol/img/lolalytics/logo/lolalytics-logo.png" class="center">
+	</div>
+	
+	<div class="column">
+		<h2>Lane</h2>
+		<form id="laneForm">
+			<label for="lane">Lane</label>
+			<select id="lane" name="lane">
+				<option value="top" id="Top">Top</option>
+				<option value="jungle" id="Jungle">Jungle</option>
+				<option value="middle" id="Middle" selected="selected">Middle</option>
+				<option value="bottom" id="Bottom">Bottom</option>
+				<option value="support" id="Support">Support</option>
+			</select>
+		</form>
+		<button class="button" onclick="getGeneralTierList()">General Tier List</button>
+		<button class="button" onclick="getLaneTierList()">Lane Tier List</button>
+	</div>
+
+	<div class="column">
+		<h2>Champion To Counter</h2>
+		<form id="counterForm">  
+		  <label for="champToCounter">Champion</label>
+		  <input list="champList" id="champToCounter" name="champToCounter" value=""><br>
+		</form>
+		<button class="button" onclick="getCounters()">Get Counters</button>
+	</div>
+
+	<div class="column">
+		<h2>Matchup To Play</h2>
+		<form id="matchupForm">
+		  <label for="champToPlay">Your Champion</label>
+		  <input list="champList" id="champToPlay" name="champToPlay" value=""><br>
+		  <label for="champToVs">Enemy Champion</label>
+		  <input list="champList" id="champToVs" name="champToVs" value=""><br>
+		</form>
+		<button class="button" onclick="getMatchup()">Get Matchup Data</button><button class="button red-button" onclick="resetForms()">Clear</button>
+	</div>
+
+</div>
+
+</body>
+</html>
+
+<script>
+function initialize(){
+	refreshChampions()
+	return;
+}
+
+
+const refreshChampions = async () => {
+	const response0 = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
+	const myJson0 = await response0.json();
+	var url = "http://ddragon.leagueoflegends.com/cdn/"+myJson0[0]+"/data/en_US/champion.json";
+	const response = await fetch(url);
+	const myJson = await response.json(); //extract JSON from the http response
+	i = 0;
+	champList.id = "champList";
+	for(var champ in myJson.data){
+		var option = document.createElement("option");
+		option.value = champ;
+		document.getElementById('champList').appendChild(option);
+	}
+}
+
+function getGeneralTierList(){
+	window.open("https://lolalytics.com/lol/tierlist/");
+}
+
+function getLaneTierList(){
+	window.open("https://lolalytics.com/lol/tierlist/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase());
+}
+
+function getCounters(){
+	window.open("https://lolalytics.com/lol/"
+		+document.getElementById("counterForm").champToCounter.value.toLowerCase()
+		+"/counters/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&vslane="
+		+document.getElementById("laneForm").lane.value.toLowerCase());
+	
+	document.getElementById("matchupForm").champToVs.value = document.getElementById("counterForm").champToCounter.value;
+}
+
+function getMatchup(){
+	
+	window.open("https://lolalytics.com/lol/"
+		+document.getElementById("matchupForm").champToPlay.value.toLowerCase()
+		+"/build/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase());
+		
+	window.open("https://lolalytics.com/lol/"
+		+document.getElementById("matchupForm").champToPlay.value.toLowerCase()
+		+"/vs/"
+		+document.getElementById("matchupForm").champToVs.value.toLowerCase()
+		+"/build/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&vslane="
+		+document.getElementById("laneForm").lane.value.toLowerCase());
+	}
+
+function resetForms(){
+	document.getElementById("counterForm").champToCounter.value = '';
+	document.getElementById("matchupForm").champToPlay.value = '';
+	document.getElementById("matchupForm").champToVs.value = '';
+}
+</script>
