@@ -1,0 +1,48 @@
+<html>
+
+<body onload="initialize()">
+
+</body>
+
+</html>
+<script>
+function initialize(){
+	refreshChampions()
+	return;
+}
+
+
+const refreshChampions = async () => {
+	
+	// Get patch/version number for other API calls
+	const response0 = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
+	const myJson0 = await response0.json();
+	
+	// Get names of all champions on current patch
+	var url = "http://ddragon.leagueoflegends.com/cdn/"+myJson0[0]+"/data/en_US/champion.json";
+  
+	const response = await fetch(url);
+	const myJson = await response.json(); //extract JSON from the http response
+	i = 0;
+	
+	for(var champ in myJson.data){
+	
+		i++;
+		newChamp(champ, i, myJson0[0]);
+	}	
+  
+}
+
+function newChamp(champId, lineCount, patch){
+	var square = document.createElement("img");
+	
+	square.src = "http://ddragon.leagueoflegends.com/cdn/"+patch+"/img/champion/"+champId+".png";
+	document.body.appendChild(square);
+	if(lineCount % 8 == 0){
+		var emptyline = document.createElement("p");
+		document.body.appendChild(emptyline);
+	}
+		
+	return;
+	}
+</script>
