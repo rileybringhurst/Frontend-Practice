@@ -34,6 +34,10 @@
 	background: #B73225;	
 }
 
+.switch {
+	
+}
+
 input , select {
   width: 100%;
   padding: 12px 20px;
@@ -78,19 +82,20 @@ input , select {
 		</form>
 		<button class="button" onclick="getGeneralTierList()">General Tier List</button>
 		<button class="button" onclick="getLaneTierList()">Lane Tier List</button>
+		<button class="button" onclick="getAramTierList()">ARAM Tier List</button>
 	</div>
 
 	<div class="column">
-		<h2>Champion To Counter</h2>
-		<form id="counterForm">  
-		  <label for="champToCounter">Champion</label>
-		  <input list="champList" id="champToCounter" name="champToCounter" value=""><br>
+		<h2>Champion</h2>
+		<form id="champForm">  
+		  <label for="singleChamp">Champion</label>
+		  <input list="champList" id="singleChamp" name="singleChamp" value=""><br>
 		</form>
-		<button class="button" onclick="getCounters()">Get Counters</button>
+		<button class="button" onclick="getBuild()">Get Build</button><button class="button" onclick="getCounters()">Get Counters</button>
 	</div>
 
 	<div class="column">
-		<h2>Matchup To Play</h2>
+		<h2>Matchup</h2>
 		<form id="matchupForm">
 		  <label for="champToPlay">Your Champion</label>
 		  <input list="champList" id="champToPlay" name="champToPlay" value=""><br>
@@ -98,6 +103,18 @@ input , select {
 		  <input list="champList" id="champToVs" name="champToVs" value=""><br>
 		</form>
 		<button class="button" onclick="getMatchup()">Get Matchup Data</button><button class="button red-button" onclick="resetForms()">Clear</button>
+	</div>
+	
+	<div class="column">
+		<h2>Timeframes To Include</h2>
+			<form id="patchesForm">
+			<label for="current">Current Patch</label>
+			<input type="checkbox" id="current">
+			<label for="twoweeks">Last 14 Days</label>
+			<input type="checkbox" id="twoweeks">
+			<label for="month">Last 30 Days</label>
+			<input type="checkbox" id="month">
+		</form>
 	</div>
 
 </div>
@@ -108,12 +125,35 @@ input , select {
 <script>
 function initialize(){
 	refreshChampions()
-	return;
+	patchesForm.current.checked = true;
+	patchesForm.twoweeks.checked = false;
+	patchesForm.month.checked = false;
+	
+	//window.open("https://www.google.com");
+	//try popup right away so I can get the "Allow popups" dialog. Not needed if I release this online.
+	
+	
+	laneForm.lane = document.cookie.lane;
+	patchesForm.current.checked = document.cookie.current;
+	patchesForm.twoweeks.checked = document.cookie.twoweeks;
+	patchesForm.month.checked = document.cookie.month;
+	
+	//return;
 }
 
+function updateCookie(){
+	var expiryDate = new Date();
+	expiryDate.setMonth(expiryDate.getMonth() + 1);
+	
+	document.cookie = "lane="+document.getElementById("laneForm").lane.value;
+		+"; current="+document.getElementById("patchesForm").current.checked
+		+"; twoweeks="+document.getElementById("patchesForm").twoweeks.checked
+		+"; month="+document.getElementById("patchesForm").month.checked
+		+": expires="+expiryDate.toGMTString()+";";
+}
 
 const refreshChampions = async () => {
-	const response0 = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
+	const response0 = await fetch('http://ddragon.leagueoflegends.com/api/versions.json');
 	const myJson0 = await response0.json();
 	var url = "http://ddragon.leagueoflegends.com/cdn/"+myJson0[0]+"/data/en_US/champion.json";
 	const response = await fetch(url);
@@ -122,38 +162,168 @@ const refreshChampions = async () => {
 	champList.id = "champList";
 	for(var champ in myJson.data){
 		var option = document.createElement("option");
+		
+		if(champ == "MonkeyKing"){champ = "Wukong";} //Wukong has a different name internally
+		
 		option.value = champ;
 		document.getElementById('champList').appendChild(option);
 	}
 }
 
 function getGeneralTierList(){
+	if(document.getElementById("patchesForm").current.checked == true){
 	window.open("https://lolalytics.com/lol/tierlist/");
+	}
+	
+	if(document.getElementById("patchesForm").twoweeks.checked == true){
+	window.open("https://lolalytics.com/lol/tierlist/"
+	+"?patch=14");
+	}
+	
+	if(document.getElementById("patchesForm").month.checked == true){
+	window.open("https://lolalytics.com/lol/tierlist/"
+	+"?patch=30");
+	}
+	
+	updateCookie();
 }
 
 function getLaneTierList(){
+	if(document.getElementById("patchesForm").current.checked == true){
 	window.open("https://lolalytics.com/lol/tierlist/?lane="
 		+document.getElementById("laneForm").lane.value.toLowerCase());
+	}
+	
+	if(document.getElementById("patchesForm").twoweeks.checked == true){
+	window.open("https://lolalytics.com/lol/tierlist/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&patch=14");
+	}
+	
+	if(document.getElementById("patchesForm").month.checked == true){
+	window.open("https://lolalytics.com/lol/tierlist/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&patch=30");
+	}
+		
+	updateCookie();
+}
+
+function getAramTierList(){
+	if(document.getElementById("patchesForm").current.checked == true){
+	window.open("https://lolalytics.com/lol/tierlist/aram/");
+	}
+	
+	if(document.getElementById("patchesForm").twoweeks.checked == true){
+	window.open("https://lolalytics.com/lol/tierlist/aram/"
+	+"?patch=14");
+	}
+	
+	if(document.getElementById("patchesForm").month.checked == true){
+	window.open("https://lolalytics.com/lol/tierlist/aram/"
+	+"?patch=30");
+	}
+	
+	updateCookie();
 }
 
 function getCounters(){
+	
+	if(document.getElementById("patchesForm").current.checked == true){
 	window.open("https://lolalytics.com/lol/"
-		+document.getElementById("counterForm").champToCounter.value.toLowerCase()
+		+document.getElementById("champForm").singleChamp.value.toLowerCase()
 		+"/counters/?lane="
 		+document.getElementById("laneForm").lane.value.toLowerCase()
 		+"&vslane="
 		+document.getElementById("laneForm").lane.value.toLowerCase());
+	}
 	
-	document.getElementById("matchupForm").champToVs.value = document.getElementById("counterForm").champToCounter.value;
+	if(document.getElementById("patchesForm").twoweeks.checked == true){	
+	window.open("https://lolalytics.com/lol/"
+		+document.getElementById("champForm").singleChamp.value.toLowerCase()
+		+"/counters/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&vslane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&patch=14");
+	}
+	
+	if(document.getElementById("patchesForm").month.checked == true){	
+	window.open("https://lolalytics.com/lol/"
+		+document.getElementById("champForm").singleChamp.value.toLowerCase()
+		+"/counters/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&vslane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&patch=30");
+	}
+	
+	document.getElementById("matchupForm").champToVs.value = document.getElementById("champForm").singleChamp.value;
+	
+	updateCookie();
 }
+
+function getBuild(){
+
+	if(document.getElementById("patchesForm").current.checked == true){
+	window.open("https://lolalytics.com/lol/"
+		+document.getElementById("champForm").singleChamp.value.toLowerCase()
+		+"/build/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase());
+	}
+	
+	if(document.getElementById("patchesForm").twoweeks.checked == true){
+		window.open("https://lolalytics.com/lol/"
+		+document.getElementById("champForm").singleChamp.value.toLowerCase()
+		+"/build/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&patch=14");
+	}
+	
+	if(document.getElementById("patchesForm").month.checked == true){
+		window.open("https://lolalytics.com/lol/"
+		+document.getElementById("champForm").singleChamp.value.toLowerCase()
+		+"/build/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&patch=30");
+	}
+	
+	document.getElementById("matchupForm").champToPlay.value = document.getElementById("champForm").singleChamp.value;
+	
+	updateCookie();	
+}
+
+
 
 function getMatchup(){
 	
+	if(document.getElementById("patchesForm").current.checked == true){
 	window.open("https://lolalytics.com/lol/"
 		+document.getElementById("matchupForm").champToPlay.value.toLowerCase()
-		+"/build/?lane="
-		+document.getElementById("laneForm").lane.value.toLowerCase());
-		
+		+"/build/");
+		//+"/build/?lane="
+		//+document.getElementById("laneForm").lane.value.toLowerCase());
+	}
+	
+	if(document.getElementById("patchesForm").twoweeks.checked == true){
+		window.open("https://lolalytics.com/lol/"
+		+document.getElementById("matchupForm").champToPlay.value.toLowerCase()
+		+"/build/"
+		//+"/build/?lane="
+		//+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"?patch=14");
+	}
+	
+	if(document.getElementById("patchesForm").month.checked == true){
+		window.open("https://lolalytics.com/lol/"
+		+document.getElementById("matchupForm").champToPlay.value.toLowerCase()
+		+"/build/"
+		//+"/build/?lane="
+		//+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"?patch=30");
+	}
+	
+	if(document.getElementById("patchesForm").current.checked == true){
 	window.open("https://lolalytics.com/lol/"
 		+document.getElementById("matchupForm").champToPlay.value.toLowerCase()
 		+"/vs/"
@@ -163,9 +333,37 @@ function getMatchup(){
 		+"&vslane="
 		+document.getElementById("laneForm").lane.value.toLowerCase());
 	}
+	
+	if(document.getElementById("patchesForm").twoweeks.checked == true){
+	window.open("https://lolalytics.com/lol/"
+		+document.getElementById("matchupForm").champToPlay.value.toLowerCase()
+		+"/vs/"
+		+document.getElementById("matchupForm").champToVs.value.toLowerCase()
+		+"/build/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&vslane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&patch=14");}
+		
+	if(document.getElementById("patchesForm").month.checked == true){
+	window.open("https://lolalytics.com/lol/"
+		+document.getElementById("matchupForm").champToPlay.value.toLowerCase()
+		+"/vs/"
+		+document.getElementById("matchupForm").champToVs.value.toLowerCase()
+		+"/build/?lane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&vslane="
+		+document.getElementById("laneForm").lane.value.toLowerCase()
+		+"&patch=30");}
+		
+	updateCookie();
+	
+	
+}
+	
 
 function resetForms(){
-	document.getElementById("counterForm").champToCounter.value = '';
+	document.getElementById("champForm").singleChamp.value = '';
 	document.getElementById("matchupForm").champToPlay.value = '';
 	document.getElementById("matchupForm").champToVs.value = '';
 }
