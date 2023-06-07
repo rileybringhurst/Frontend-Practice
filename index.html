@@ -153,9 +153,9 @@ function updateCookie(){
 }
 
 const refreshChampions = async () => {
-	const response0 = await fetch('http://ddragon.leagueoflegends.com/api/versions.json');
+	const response0 = await fetch('https://ddragon.leagueoflegends.com/api/versions.json');
 	const myJson0 = await response0.json();
-	var url = "http://ddragon.leagueoflegends.com/cdn/"+myJson0[0]+"/data/en_US/champion.json";
+	var url = "https://ddragon.leagueoflegends.com/cdn/"+myJson0[0]+"/data/en_US/champion.json";
 	const response = await fetch(url);
 	const myJson = await response.json(); //extract JSON from the http response
 	i = 0;
