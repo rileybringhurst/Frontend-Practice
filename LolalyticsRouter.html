@@ -123,6 +123,22 @@ input , select {
 </html>
 
 <script>
+function readCookie(cname) {
+    var name = cname + "=";
+    var decoded_cookie = decodeURIComponent(document.cookie);
+    var carr = decoded_cookie.split(';');
+    for(var i=0; i<carr.length;i++){
+    var c = carr[i];
+    while(c.charAt(0)==' '){
+        c=c.substring(1);
+    }
+    if(c.indexOf(name) == 0) {
+        return c.substring(name.length, c.length);
+    }
+     }
+     return "";
+}
+
 function initialize(){
 	refreshChampions()
 	patchesForm.current.checked = true;
@@ -145,7 +161,7 @@ function updateCookie(){
 	var expiryDate = new Date();
 	expiryDate.setMonth(expiryDate.getMonth() + 1);
 	
-	document.cookie = "lane="+document.getElementById("laneForm").lane.value;
+	document.cookie = "lane="+document.getElementById("laneForm").lane.value
 		+"; current="+document.getElementById("patchesForm").current.checked
 		+"; twoweeks="+document.getElementById("patchesForm").twoweeks.checked
 		+"; month="+document.getElementById("patchesForm").month.checked
@@ -368,19 +384,5 @@ function resetForms(){
 	document.getElementById("matchupForm").champToVs.value = '';
 }
 
-function readCookie(cname) {
-    var name = cname + "=";
-    var decoded_cookie = decodeURIComponent(document.cookie);
-    var carr = decoded_cookie.split(';');
-    for(var i=0; i<carr.length;i++){
-    var c = carr[i];
-    while(c.charAt(0)==' '){
-        c=c.substring(1);
-    }
-    if(c.indexOf(name) == 0) {
-        return c.substring(name.length, c.length);
-    }
-     }
-     return "";
-}
+
 </script>
