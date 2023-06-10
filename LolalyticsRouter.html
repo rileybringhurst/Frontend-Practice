@@ -133,10 +133,10 @@ function initialize(){
 	//try popup right away so I can get the "Allow popups" dialog. Not needed if I release this online.
 	
 	
-	laneForm.lane = document.cookie.lane;
-	patchesForm.current.checked = document.cookie.current;
-	patchesForm.twoweeks.checked = document.cookie.twoweeks;
-	patchesForm.month.checked = document.cookie.month;
+	laneForm.lane = readCookie(lane);
+	patchesForm.current.checked = readCookie(current);
+	patchesForm.twoweeks.checked = readCookie(twoweeks);
+	patchesForm.month.checked = readCookie(month);
 	
 	//return;
 }
@@ -366,5 +366,21 @@ function resetForms(){
 	document.getElementById("champForm").singleChamp.value = '';
 	document.getElementById("matchupForm").champToPlay.value = '';
 	document.getElementById("matchupForm").champToVs.value = '';
+}
+
+function readCookie(cname) {
+    var name = cname + "=";
+    var decoded_cookie = decodeURIComponent(document.cookie);
+    var carr = decoded_cookie.split(';');
+    for(var i=0; i<carr.length;i++){
+    var c = carr[i];
+    while(c.charAt(0)==' '){
+        c=c.substring(1);
+    }
+    if(c.indexOf(name) == 0) {
+        return c.substring(name.length, c.length);
+    }
+     }
+     return "";
 }
 </script>
