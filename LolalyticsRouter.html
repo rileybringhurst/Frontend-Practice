@@ -161,11 +161,11 @@ function updateCookie(){
 	var expiryDate = new Date();
 	expiryDate.setMonth(expiryDate.getMonth() + 1);
 	
-	document.cookie = "lane="+document.getElementById("laneForm").lane.value
-		+"; current="+document.getElementById("patchesForm").current.checked
-		+"; twoweeks="+document.getElementById("patchesForm").twoweeks.checked
-		+"; month="+document.getElementById("patchesForm").month.checked
-		+": expires="+expiryDate.toGMTString()+";";
+	document.cookie = "lane="+document.getElementById("laneForm").lane.value;
+	document.cookie = "current="+document.getElementById("patchesForm").current.checked;
+	document.cookie = "twoweeks="+document.getElementById("patchesForm").twoweeks.checked;
+	document.cookie = "month="+document.getElementById("patchesForm").month.checked
+	document.cookie = "expires="+expiryDate.toGMTString()+";";
 }
 
 const refreshChampions = async () => {
