@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Visitation Calendar Generator</title>
+  <!-- Load SheetJS for Excel Parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Load Google Identity Services (GIS) & Drive API Client -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background: #f9f9f9; }
+    .card { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
+    button { background: #1a73e8; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #log { margin-top: 20px; font-family: monospace; font-size: 13px; background: #222; color: #0f0; padding: 12px; border-radius: 4px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Adelanto Visitation Sync</h2>
+  <p>Select your master Excel file from Google Drive to generate calendar events for the upcoming week.</p>
+  <button id="mainBtn" onclick="handleAuthClick()">Sign In & Pick Excel File</button>
+  <div id="log">Status: Ready</div>
+</div>
+
+<script>
+  // CONFIGURATION: Replace with your actual OAuth Client ID
+  const CLIENT_ID = 'REDACTED.apps.googleusercontent.com';
+  const SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.readonly';
+
+  let tokenClient;
+  let accessToken = null;
+  let gapiInited = false;
+  let gsiInited = false;
+
+  function log(msg) {
+    const el = document.getElementById('log');
+    el.innerText += '\n' + msg;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // Load Google API Libraries
+  window.onload = () => {
+    gapi.load('picker', () => { gapiInited = true; });
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: async (response) => {
+        if (response.error) {
+          log('Auth Error: ' + response.error);
+          return;
+        }
+        accessToken = response.access_token;
+        log('Authenticated successfully!');
+        createPicker();
+      },
+    });
+    gsiInited = true;
+  };
+
+  function handleAuthClick() {
+    if (!accessToken) {
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+      createPicker();
+    }
+  }
+
+  // Open Google Drive Picker UI
+  function createPicker() {
+    const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
+      .setMimeTypes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel');
+
+    const picker = new google.picker.PickerBuilder()
+      .addView(view)
+      .setOAuthToken(accessToken)
+      .setCallback(pickerCallback)
+      .build();
+    picker.setVisible(true);
+  }
+
+  async function pickerCallback(data) {
+    if (data.action === google.picker.Action.PICKED) {
+      
+	  people = [];
+		locationMap = {};
+	  
+	  const doc = data.docs[0];
+      log(`File selected: ${doc.name}`);
+      await downloadAndProcessExcel(doc.id);
+    }
+  }
+
+  // Fetch the selected file from Google Drive and parse via SheetJS
+  async function downloadAndProcessExcel(fileId) {
+    log('Downloading file from Drive...');
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&_cb=${Date.now()}`, {
+      headers: { Authorization: `Bearer ${accessToken}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache' }
+    });
+    const buffer = await response.arrayBuffer();
+
+    log('Parsing workbook sheets...');
+    const workbook = XLSX.read(buffer, { type: 'array' });
+
+    // Read the required tabs
+    const scheduleSheet = workbook.Sheets['Visitation Schedule'];
+    const needsVisitSheet = workbook.Sheets['Needs Visit'];
+
+    if (!needsVisitSheet) {
+      log('Error: "Needs Visit" sheet not found in workbook!');
+      return;
+    }
+
+    const scheduleData = scheduleSheet ? XLSX.utils.sheet_to_json(scheduleSheet) : [];
+    const needsVisitData = XLSX.utils.sheet_to_json(needsVisitSheet);
+
+    // Build location lookup table from Tab 1
+    const locationMap = {};
+    scheduleData.forEach(row => {
+      if (row['Location'] && row['Visitation Schedule']) {
+        locationMap[row['Location'].trim()] = row['Visitation Schedule'];
+      }
+    });
+
+    log(`Loaded ${needsVisitData.length} records from "Needs Visit".`);
+    await processAndCreateEvents(needsVisitData, locationMap);
+  }
+
+  // Convert row data into Google Calendar events
+  async function processAndCreateEvents(people, locationMap) {
+    const eventsToCreate = [];
+
+    people.forEach(person => {
+      const firstName = (person['First Name'] || '').trim();
+      const lastName = (person['Last Name'] || '').trim();
+      const fullName = `${firstName} ${lastName}`.trim() || 'Unknown Detainee';
+      const dorm = (person['Location (Dorm)'] || '').trim();
+      
+      // Fallback: Use explicit schedule on row, or map from Tab 1 using dorm
+      const scheduleText = person['Visit Schedule'] || locationMap[dorm];
+
+      if (!scheduleText) {
+        log(`Skipping ${fullName}: No schedule found for dorm ${dorm}`);
+        return;
+      }
+
+      const parsedSlots = parseScheduleText(scheduleText);
+      parsedSlots.forEach(slot => {
+        eventsToCreate.push({
+          summary: `Visitation: ${fullName} (${dorm})`,
+          description: `Detainee: ${fullName}\nLocation: ${dorm}\nBed: ${person['Bed'] || 'N/A'}\nLanguage: ${person['Language'] || 'N/A'}\nCommissary #: ${person['Commissary #'] || 'N/A'}`,
+          start: { dateTime: slot.start.toISOString() },
+          end: { dateTime: slot.end.toISOString() },
+        });
+      });
+    });
+
+    log(`Generated ${eventsToCreate.length} event slots. Uploading to Google Calendar...`);
+
+    // Sequential POST with 200ms delay to prevent rate limits
+    let count = 0;
+    for (const evt of eventsToCreate) {
+      await createGoogleCalendarEvent(evt);
+      count++;
+      log(`[${count}/${eventsToCreate.length}] Created event: ${evt.summary} on ${evt.start.dateTime.split('T')[0]}`);
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    log('SUCCESS: All visitation events created!');
+  }
+
+  // Parse time format strings like "Mon 3 PM–6 PM; Wed 8 AM–11 AM"
+  function parseScheduleText(text) {
+    const slots = [];
+    const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thurs: 4, Fri: 5, Sat: 6 };
+    const parts = text.split(';');
+
+    parts.forEach(part => {
+      const regex = /(Sun|Mon|Tue|Wed|Thurs|Fri|Sat)\s+([\d:]+\s*(?:AM|PM))–([\d:]+\s*(?:AM|PM))/i;
+      const match = part.trim().match(regex);
+
+      if (match) {
+        const [, dayStr, startTimeStr, endTimeStr] = match;
+        const targetDate = getNextDateForDay(dayMap[dayStr]);
+
+        const start = applyTimeToDate(targetDate, startTimeStr);
+        const end = applyTimeToDate(targetDate, endTimeStr);
+
+        if (start && end) {
+          slots.push({ start, end });
+        }
+      }
+    });
+
+    return slots;
+  }
+
+  // Date math: Finds the upcoming target day of the week
+  function getNextDateForDay(targetDay) {
+    const today = new Date();
+    const currentDay = today.getDay();
+    let daysAhead = targetDay - currentDay;
+    if (daysAhead <= 0) daysAhead += 7; // Forces target to next week's occurrence
+
+    const result = new Date(today);
+    result.setDate(today.getDate() + daysAhead);
+    return result;
+  }
+
+  function applyTimeToDate(baseDate, timeStr) {
+    const match = timeStr.trim().match(/(\d+)(?::(\d+))?\s*(AM|PM)/i);
+    if (!match) return null;
+
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2] ? parseInt(match[2], 10) : 0;
+    const ampm = match[3].toUpperCase();
+
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+
+    const result = new Date(baseDate);
+    result.setHours(hours, minutes, 0, 0);
+    return result;
+  }
+
+  // Call Google Calendar API Endpoint
+  async function createGoogleCalendarEvent(eventPayload) {
+    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(eventPayload)
+    });
+    return res.json();
+  }
+</script>
+</body>
+</html>
